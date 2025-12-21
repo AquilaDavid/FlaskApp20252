@@ -25,5 +25,5 @@ def getInstituicoesEnsino():
         instituicoesEnsino.append(ie)
 
     return instituicoesEnsino
-
+ 
 
