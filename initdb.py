@@ -1,42 +1,11 @@
-import sqlite3
+from helpers.database.csv_reader import ler_csv_nordeste_json
+from helpers.json_helper import write_json
 
-DATABASE_NAME = "censoescolar.db"
+CSV_PATH = 'microdados_ed_basica_2024.csv'
+JSON_SAIDA = 'data/instituicoesensino.json'
 
-tables = [
-    """
-        CREATE TABLE IF NOT EXISTS tb_instituicao (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                codigo TEXT NOT NULL,
-                nome TEXT NOT NULL,
-                co_uf INTEGER NOT NULL,
-                co_municipio INTEGER NOT NULL,
-                qt_mat_bas INTEGER NOT NULL,
-                qt_mat_prof INTEGER NOT NULL,
-                qt_mat_esp INTEGER NOT NULL
-        )
-    """,
-    """
-        CREATE TABLE IF NOT EXISTS tb_usuario (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                cpf TEXT NOT NULL,
-                nascimento DATE NOT NULL
-        )
-    """
-]
+dados_json = ler_csv_nordeste_json(CSV_PATH, limite=1000)
 
+write_json(JSON_SAIDA, dados_json)
 
-def create_tables():
-    print("Iniciando criação")
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    for table in tables:
-        print("Criando as tabelas")
-        cursor.execute(table)
-    conn.commit()
-    print("Fechar conexão")
-    conn.close()
-
-
-if __name__ == "__main__":
-    create_tables()
+print("CSV do Nordeste convertido para JSON com sucesso.")
