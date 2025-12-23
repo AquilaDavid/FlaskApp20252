@@ -1,148 +1,220 @@
 from flask import Flask, request, jsonify
-
-from models.Usuario import Usuario
-from models.InstituicaoEnsino import InstituicaoEnsino
-from helpers.json_helper import read_json, write_json
+from helpers.database.sqlite_helper import get_connection
 
 app = Flask(__name__)
-
-USUARIOS_FILE = "data/usuarios.json"
-INSTITUICOES_FILE = "data/instituicoesensino.json"
 
 
 @app.get("/")
 def index():
-    return {"versao": "2.0.0"}, 200
+    return {"versao": "2.0.0", "banco": "SQLite"}, 200
 
 
 
-# USUÁRIOS
+# USUÁRIOS 
 
 @app.get("/usuarios")
-def getUsuarios():
-    usuarios_json = read_json(USUARIOS_FILE)
-    return jsonify(usuarios_json), 200
+def get_usuarios():
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 10))
+    offset = (page - 1) * limit
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    total = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT id, nome, cpf, nascimento
+        FROM usuarios
+        LIMIT ? OFFSET ?
+    """, (limit, offset))
+
+    usuarios = [
+        {
+            "id": row[0],
+            "nome": row[1],
+            "cpf": row[2],
+            "nascimento": row[3]
+        }
+        for row in cursor.fetchall()
+    ]
+
+    conn.close()
+
+    return jsonify({
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": usuarios
+    }), 200
 
 
 @app.get("/usuarios/<int:id>")
-def getUsuarioById(id):
-    usuarios = read_json(USUARIOS_FILE)
+def get_usuario_by_id(id):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    for usuario in usuarios:
-        if usuario["id"] == id:
-            return jsonify(usuario), 200
+    cursor.execute("""
+        SELECT id, nome, cpf, nascimento
+        FROM usuarios
+        WHERE id = ?
+    """, (id,))
 
-    return {"erro": "Usuário não encontrado"}, 404
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return {"erro": "Usuário não encontrado"}, 404
+
+    return {
+        "id": row[0],
+        "nome": row[1],
+        "cpf": row[2],
+        "nascimento": row[3]
+    }, 200
 
 
 @app.post("/usuarios")
-def createUsuario():
+def create_usuario():
     data = request.get_json()
-    usuarios = read_json(USUARIOS_FILE)
 
-    novo_id = max(u["id"] for u in usuarios) + 1 if usuarios else 1
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    novo_usuario = Usuario(
-        novo_id,
-        data["nome"],
-        data["cpf"],
-        data["nascimento"]
-    )
+    cursor.execute("""
+        INSERT INTO usuarios (nome, cpf, nascimento)
+        VALUES (?, ?, ?)
+    """, (data["nome"], data["cpf"], data["nascimento"]))
 
-    usuarios.append(novo_usuario.to_json())
-    write_json(USUARIOS_FILE, usuarios)
+    conn.commit()
+    novo_id = cursor.lastrowid
+    conn.close()
 
-    return novo_usuario.to_json(), 201
+    return {"id": novo_id, **data}, 201
 
 
 @app.put("/usuarios/<int:id>")
-def updateUsuario(id):
+def update_usuario(id):
     data = request.get_json()
-    usuarios = read_json(USUARIOS_FILE)
 
-    for usuario in usuarios:
-        if usuario["id"] == id:
-            usuario["nome"] = data.get("nome", usuario["nome"])
-            usuario["cpf"] = data.get("cpf", usuario["cpf"])
-            usuario["nascimento"] = data.get("nascimento", usuario["nascimento"])
+    conn = get_connection()
+    cursor = conn.cursor()
 
-            write_json(USUARIOS_FILE, usuarios)
-            return usuario, 200
+    cursor.execute("""
+        UPDATE usuarios
+        SET nome = ?, cpf = ?, nascimento = ?
+        WHERE id = ?
+    """, (
+        data.get("nome"),
+        data.get("cpf"),
+        data.get("nascimento"),
+        id
+    ))
 
-    return {"erro": "Usuário não encontrado"}, 404
+    conn.commit()
+    rows = cursor.rowcount
+    conn.close()
+
+    if rows == 0:
+        return {"erro": "Usuário não encontrado"}, 404
+
+    return {"mensagem": "Usuário atualizado com sucesso"}, 200
 
 
 @app.delete("/usuarios/<int:id>")
-def deleteUsuario(id):
-    usuarios = read_json(USUARIOS_FILE)
+def delete_usuario(id):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    usuarios_filtrados = [u for u in usuarios if u["id"] != id]
+    cursor.execute("DELETE FROM usuarios WHERE id = ?", (id,))
+    conn.commit()
 
-    if len(usuarios_filtrados) == len(usuarios):
+    rows = cursor.rowcount
+    conn.close()
+
+    if rows == 0:
         return {"erro": "Usuário não encontrado"}, 404
 
-    write_json(USUARIOS_FILE, usuarios_filtrados)
     return {"mensagem": "Usuário removido com sucesso"}, 200
 
 
 
-# INSTITUIÇÕES DE ENSINO
-
+# INSTITUIÇÕES DE ENSINO 
 
 @app.get("/instituicoesensino")
-def getInstituicoes():
-    instituicoes = read_json(INSTITUICOES_FILE)
-    return jsonify(instituicoes), 200
+def get_instituicoes():
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 10))
+    offset = (page - 1) * limit
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM instituicoes_ensino")
+    total = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT codigo, nome, co_uf, co_municipio,
+               qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp
+        FROM instituicoes_ensino
+        LIMIT ? OFFSET ?
+    """, (limit, offset))
+
+    instituicoes = [
+        {
+            "codigo": row[0],
+            "nome": row[1],
+            "co_uf": row[2],
+            "co_municipio": row[3],
+            "qt_mat_bas": row[4],
+            "qt_mat_prof": row[5],
+            "qt_mat_eja": row[6],
+            "qt_mat_esp": row[7]
+        }
+        for row in cursor.fetchall()
+    ]
+
+    conn.close()
+
+    return jsonify({
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "data": instituicoes
+    }), 200
 
 
 @app.get("/instituicoesensino/<int:codigo>")
-def getInstituicaoByCodigo(codigo):
-    instituicoes = read_json(INSTITUICOES_FILE)
+def get_instituicao_by_codigo(codigo):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    for ie in instituicoes:
-        if ie["codigo"] == codigo:
-            return jsonify(ie), 200
+    cursor.execute("""
+        SELECT codigo, nome, co_uf, co_municipio,
+               qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp
+        FROM instituicoes_ensino
+        WHERE codigo = ?
+    """, (codigo,))
 
-    return {"erro": "Instituição não encontrada"}, 404
+    row = cursor.fetchone()
+    conn.close()
 
-
-@app.post("/instituicoesensino")
-def createInstituicao():
-    data = request.get_json()
-    instituicoes = read_json(INSTITUICOES_FILE)
-
-    nova_ie = data
-    instituicoes.append(nova_ie)
-
-    write_json(INSTITUICOES_FILE, instituicoes)
-    return nova_ie, 201
-
-
-@app.put("/instituicoesensino/<int:codigo>")
-def updateInstituicao(codigo):
-    data = request.get_json()
-    instituicoes = read_json(INSTITUICOES_FILE)
-
-    for ie in instituicoes:
-        if ie["codigo"] == codigo:
-            ie.update(data)
-            write_json(INSTITUICOES_FILE, instituicoes)
-            return ie, 200
-
-    return {"erro": "Instituição não encontrada"}, 404
-
-
-@app.delete("/instituicoesensino/int:codigo>")
-def deleteInstituicao(codigo):
-    instituicoes = read_json(INSTITUICOES_FILE)
-
-    novas_ie = [ie for ie in instituicoes if ie["codigo"] != codigo]
-
-    if len(novas_ie) == len(instituicoes):
+    if not row:
         return {"erro": "Instituição não encontrada"}, 404
 
-    write_json(INSTITUICOES_FILE, novas_ie)
-    return {"mensagem": "Instituição removida com sucesso"}, 200
+    return {
+        "codigo": row[0],
+        "nome": row[1],
+        "co_uf": row[2],
+        "co_municipio": row[3],
+        "qt_mat_bas": row[4],
+        "qt_mat_prof": row[5],
+        "qt_mat_eja": row[6],
+        "qt_mat_esp": row[7]
+    }, 200
+
+
 
 
 if __name__ == "__main__":
