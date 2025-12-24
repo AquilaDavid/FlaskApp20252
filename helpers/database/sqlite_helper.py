@@ -18,20 +18,42 @@ def criar_tabela():
     cursor = conn.cursor()
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS instituicoes_ensino (
-            codigo INTEGER PRIMARY KEY,
-            nome TEXT,
-            co_uf TEXT,
+        CREATE TABLE instituicoes_ensino (
+            co_entidade INTEGER,
+            no_entidade TEXT,
+            no_uf TEXT,
+            sg_uf TEXT,
+            co_uf INTEGER,
+            no_municipio TEXT,
             co_municipio INTEGER,
+            no_mesorregiao TEXT,
+            co_mesorregiao INTEGER,
+            no_microrregiao TEXT,
+            co_microrregiao INTEGER,
+            no_regiao TEXT,
+            co_regiao INTEGER,
+            nu_ano_censo INTEGER,
+
             qt_mat_bas INTEGER,
             qt_mat_prof INTEGER,
             qt_mat_eja INTEGER,
-            qt_mat_esp INTEGER
+            qt_mat_esp INTEGER,
+            qt_mat_fund INTEGER,
+            qt_mat_inf INTEGER,
+            qt_mat_med INTEGER,
+            qt_mat_zr_na INTEGER,
+            qt_mat_zr_rur INTEGER,
+            qt_mat_zr_urb INTEGER,
+
+            qt_mat_total INTEGER,
+
+            PRIMARY KEY (co_entidade, nu_ano_censo)
         );
     """)
 
     conn.commit()
     conn.close()
+
 
 
 def carregar_json():
