@@ -1,1 +1,2 @@
+database/*.db filter=lfs diff=lfs merge=lfs -text
 database/censo_escolar.db filter=lfs diff=lfs merge=lfs -text
