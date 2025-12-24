@@ -11,9 +11,9 @@ def index():
     return {"versao": "2.0.0", "banco": "SQLite"}, 200
 
 
-# ============================
+
 # USUÁRIOS
-# ============================
+
 
 @app.get("/usuarios")
 def get_usuarios():
@@ -45,8 +45,6 @@ def get_usuarios():
         for row in cursor.fetchall()
     ]
 
-    logger.info(f"{len(usuarios)} usuários retornados (total={total})")
-
     conn.close()
 
     return jsonify({
@@ -57,113 +55,9 @@ def get_usuarios():
     }), 200
 
 
-@app.get("/usuarios/<int:id>")
-def get_usuario_by_id(id):
-    logger.info(f"Buscando usuário por id={id}")
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, nome, cpf, nascimento
-        FROM usuarios
-        WHERE id = ?
-    """, (id,))
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
-        logger.warning(f"Usuário não encontrado | id={id}")
-        return {"erro": "Usuário não encontrado"}, 404
-
-    logger.info(f"Usuário encontrado | id={id}")
-
-    return {
-        "id": row[0],
-        "nome": row[1],
-        "cpf": row[2],
-        "nascimento": row[3]
-    }, 200
-
-
-@app.post("/usuarios")
-def create_usuario():
-    data = request.get_json()
-    logger.info(f"Criando usuário | nome={data.get('nome')}")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO usuarios (nome, cpf, nascimento)
-        VALUES (?, ?, ?)
-    """, (data["nome"], data["cpf"], data["nascimento"]))
-
-    conn.commit()
-    novo_id = cursor.lastrowid
-    conn.close()
-
-    logger.info(f"Usuário criado com sucesso | id={novo_id}")
-
-    return {"id": novo_id, **data}, 201
-
-
-@app.put("/usuarios/<int:id>")
-def update_usuario(id):
-    data = request.get_json()
-    logger.info(f"Atualizando usuário | id={id}")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE usuarios
-        SET nome = ?, cpf = ?, nascimento = ?
-        WHERE id = ?
-    """, (
-        data.get("nome"),
-        data.get("cpf"),
-        data.get("nascimento"),
-        id
-    ))
-
-    conn.commit()
-    rows = cursor.rowcount
-    conn.close()
-
-    if rows == 0:
-        logger.warning(f"Tentativa de atualizar usuário inexistente | id={id}")
-        return {"erro": "Usuário não encontrado"}, 404
-
-    logger.info(f"Usuário atualizado com sucesso | id={id}")
-    return {"mensagem": "Usuário atualizado com sucesso"}, 200
-
-
-@app.delete("/usuarios/<int:id>")
-def delete_usuario(id):
-    logger.info(f"Removendo usuário | id={id}")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM usuarios WHERE id = ?", (id,))
-    conn.commit()
-
-    rows = cursor.rowcount
-    conn.close()
-
-    if rows == 0:
-        logger.warning(f"Tentativa de remoção de usuário inexistente | id={id}")
-        return {"erro": "Usuário não encontrado"}, 404
-
-    logger.info(f"Usuário removido com sucesso | id={id}")
-    return {"mensagem": "Usuário removido com sucesso"}, 200
-
-
-# ============================
 # INSTITUIÇÕES DE ENSINO
-# ============================
+
 
 @app.get("/instituicoesensino")
 def get_instituicoes():
@@ -180,27 +74,28 @@ def get_instituicoes():
     total = cursor.fetchone()[0]
 
     cursor.execute("""
-        SELECT codigo, nome, co_uf, co_municipio,
-               qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp
+        SELECT
+            co_entidade,
+            no_entidade,
+            sg_uf,
+            no_municipio,
+            nu_ano_censo,
+            qt_mat_total
         FROM instituicoes_ensino
         LIMIT ? OFFSET ?
     """, (limit, offset))
 
     instituicoes = [
         {
-            "codigo": row[0],
-            "nome": row[1],
-            "co_uf": row[2],
-            "co_municipio": row[3],
-            "qt_mat_bas": row[4],
-            "qt_mat_prof": row[5],
-            "qt_mat_eja": row[6],
-            "qt_mat_esp": row[7]
+            "co_entidade": row[0],
+            "no_entidade": row[1],
+            "sg_uf": row[2],
+            "no_municipio": row[3],
+            "nu_ano_censo": row[4],
+            "qt_mat_total": row[5]
         }
         for row in cursor.fetchall()
     ]
-
-    logger.info(f"{len(instituicoes)} instituições retornadas (total={total})")
 
     conn.close()
 
@@ -212,39 +107,91 @@ def get_instituicoes():
     }), 200
 
 
-@app.get("/instituicoesensino/<int:codigo>")
-def get_instituicao_by_codigo(codigo):
-    logger.info(f"Buscando instituição | codigo={codigo}")
+
+# RANKING DE MATRÍCULAS
+
+
+@app.get("/instituicoesensino/ranking/<int:ano>")
+def ranking_instituicoes(ano):
+    if ano not in (2022, 2023, 2024):
+        logger.warning(f"Ano inválido informado: {ano}")
+        return {"erro": "Ano inválido. Utilize 2022, 2023 ou 2024."}, 400
+
+    logger.info(f"Gerando ranking de instituições | ano={ano}")
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT codigo, nome, co_uf, co_municipio,
-               qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp
+        SELECT
+            no_entidade,
+            co_entidade,
+            no_uf,
+            sg_uf,
+            co_uf,
+            no_municipio,
+            co_municipio,
+            no_mesorregiao,
+            co_mesorregiao,
+            no_microrregiao,
+            co_microrregiao,
+            nu_ano_censo,
+            no_regiao,
+            co_regiao,
+            qt_mat_bas,
+            qt_mat_prof,
+            qt_mat_eja,
+            qt_mat_esp,
+            qt_mat_fund,
+            qt_mat_inf,
+            qt_mat_med,
+            qt_mat_zr_na,
+            qt_mat_zr_rur,
+            qt_mat_zr_urb,
+            qt_mat_total
         FROM instituicoes_ensino
-        WHERE codigo = ?
-    """, (codigo,))
+        WHERE nu_ano_censo = ?
+        ORDER BY qt_mat_total DESC
+        LIMIT 10
+    """, (ano,))
 
-    row = cursor.fetchone()
+    rows = cursor.fetchall()
     conn.close()
 
-    if not row:
-        logger.warning(f"Instituição não encontrada | codigo={codigo}")
-        return {"erro": "Instituição não encontrada"}, 404
+    ranking = []
+    for idx, row in enumerate(rows, start=1):
+        ranking.append({
+            "no_entidade": row[0],
+            "co_entidade": row[1],
+            "no_uf": row[2],
+            "sg_uf": row[3],
+            "co_uf": row[4],
+            "no_municipio": row[5],
+            "co_municipio": row[6],
+            "no_mesorregiao": row[7],
+            "co_mesorregiao": row[8],
+            "no_microrregiao": row[9],
+            "co_microrregiao": row[10],
+            "nu_ano_censo": row[11],
+            "no_regiao": row[12],
+            "co_regiao": row[13],
+            "qt_mat_bas": row[14],
+            "qt_mat_prof": row[15],
+            "qt_mat_eja": row[16],
+            "qt_mat_esp": row[17],
+            "qt_mat_fund": row[18],
+            "qt_mat_inf": row[19],
+            "qt_mat_med": row[20],
+            "qt_mat_zr_na": row[21],
+            "qt_mat_zr_rur": row[22],
+            "qt_mat_zr_urb": row[23],
+            "qt_mat_total": row[24],
+            "nu_ranking": idx
+        })
 
-    logger.info(f"Instituição encontrada | codigo={codigo}")
+    logger.info(f"Ranking gerado com {len(ranking)} instituições | ano={ano}")
 
-    return {
-        "codigo": row[0],
-        "nome": row[1],
-        "co_uf": row[2],
-        "co_municipio": row[3],
-        "qt_mat_bas": row[4],
-        "qt_mat_prof": row[5],
-        "qt_mat_eja": row[6],
-        "qt_mat_esp": row[7]
-    }, 200
+    return jsonify(ranking), 200
 
 
 if __name__ == "__main__":
