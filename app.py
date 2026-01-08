@@ -95,12 +95,12 @@ def getInstituicoes():
     return jsonify(instituicoes), 200
 
 
-@app.get("/instituicoesensino/<string:codigo>")
+@app.get("/instituicoesensino/<int:codigo>")
 def getInstituicaoByCodigo(codigo):
     instituicoes = read_json(INSTITUICOES_FILE)
 
     for ie in instituicoes:
-        if ie["id"] == codigo:
+        if ie["codigo"] == codigo:
             return jsonify(ie), 200
 
     return {"erro": "Instituição não encontrada"}, 404
@@ -118,7 +118,7 @@ def createInstituicao():
     return nova_ie, 201
 
 
-@app.put("/instituicoesensino/<string:codigo>")
+@app.put("/instituicoesensino/<int:codigo>")
 def updateInstituicao(codigo):
     data = request.get_json()
     instituicoes = read_json(INSTITUICOES_FILE)
@@ -132,7 +132,7 @@ def updateInstituicao(codigo):
     return {"erro": "Instituição não encontrada"}, 404
 
 
-@app.delete("/instituicoesensino/<string:codigo>")
+@app.delete("/instituicoesensino/int:codigo>")
 def deleteInstituicao(codigo):
     instituicoes = read_json(INSTITUICOES_FILE)
 
