@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from helpers.database.sqlite_helper import get_connection
+from helpers.database.postgres_helper import get_connection
 from helpers.logger import logger
 
 app = Flask(__name__)
@@ -8,8 +8,7 @@ app = Flask(__name__)
 @app.get("/")
 def index():
     logger.info("Endpoint raiz acessado")
-    return {"versao": "2.0.0", "banco": "SQLite"}, 200
-
+    return {"versao": "2.0.0", "banco": "PostgreSQL"}, 200
 
 
 # USUÁRIOS
@@ -32,7 +31,7 @@ def get_usuarios():
     cursor.execute("""
         SELECT id, nome, cpf, nascimento
         FROM usuarios
-        LIMIT ? OFFSET ?
+        LIMIT %s OFFSET %s
     """, (limit, offset))
 
     usuarios = [
@@ -53,7 +52,6 @@ def get_usuarios():
         "total": total,
         "data": usuarios
     }), 200
-
 
 
 # INSTITUIÇÕES DE ENSINO
@@ -82,7 +80,7 @@ def get_instituicoes():
             nu_ano_censo,
             qt_mat_total
         FROM instituicoes_ensino
-        LIMIT ? OFFSET ?
+        LIMIT %s OFFSET %s
     """, (limit, offset))
 
     instituicoes = [
@@ -107,7 +105,6 @@ def get_instituicoes():
     }), 200
 
 
-
 # RANKING DE MATRÍCULAS
 
 
@@ -126,18 +123,11 @@ def ranking_instituicoes(ano):
         SELECT
             no_entidade,
             co_entidade,
-            no_uf,
             sg_uf,
             co_uf,
             no_municipio,
             co_municipio,
-            no_mesorregiao,
-            co_mesorregiao,
-            no_microrregiao,
-            co_microrregiao,
             nu_ano_censo,
-            no_regiao,
-            co_regiao,
             qt_mat_bas,
             qt_mat_prof,
             qt_mat_eja,
@@ -150,7 +140,7 @@ def ranking_instituicoes(ano):
             qt_mat_zr_urb,
             qt_mat_total
         FROM instituicoes_ensino
-        WHERE nu_ano_censo = ?
+        WHERE nu_ano_censo = %s
         ORDER BY qt_mat_total DESC
         LIMIT 10
     """, (ano,))
@@ -163,29 +153,22 @@ def ranking_instituicoes(ano):
         ranking.append({
             "no_entidade": row[0],
             "co_entidade": row[1],
-            "no_uf": row[2],
-            "sg_uf": row[3],
-            "co_uf": row[4],
-            "no_municipio": row[5],
-            "co_municipio": row[6],
-            "no_mesorregiao": row[7],
-            "co_mesorregiao": row[8],
-            "no_microrregiao": row[9],
-            "co_microrregiao": row[10],
-            "nu_ano_censo": row[11],
-            "no_regiao": row[12],
-            "co_regiao": row[13],
-            "qt_mat_bas": row[14],
-            "qt_mat_prof": row[15],
-            "qt_mat_eja": row[16],
-            "qt_mat_esp": row[17],
-            "qt_mat_fund": row[18],
-            "qt_mat_inf": row[19],
-            "qt_mat_med": row[20],
-            "qt_mat_zr_na": row[21],
-            "qt_mat_zr_rur": row[22],
-            "qt_mat_zr_urb": row[23],
-            "qt_mat_total": row[24],
+            "sg_uf": row[2],
+            "co_uf": row[3],
+            "no_municipio": row[4],
+            "co_municipio": row[5],
+            "nu_ano_censo": row[6],
+            "qt_mat_bas": row[7],
+            "qt_mat_prof": row[8],
+            "qt_mat_eja": row[9],
+            "qt_mat_esp": row[10],
+            "qt_mat_fund": row[11],
+            "qt_mat_inf": row[12],
+            "qt_mat_med": row[13],
+            "qt_mat_zr_na": row[14],
+            "qt_mat_zr_rur": row[15],
+            "qt_mat_zr_urb": row[16],
+            "qt_mat_total": row[17],
             "nu_ranking": idx
         })
 
