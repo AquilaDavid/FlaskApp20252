@@ -1,64 +1,67 @@
 import pandas as pd
+from helpers.logger import logger
 
-ESTADOS_NORDESTE = ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE']
 
-def ler_csv_nordeste_json(caminho_csv, limite=None):
-    """
-    Lê o CSV do Censo Escolar de forma paginada,
-    filtra apenas a Região Nordeste
-    e retorna os dados em formato JSON (list[dict]).
-    """
+def ler_csv_nordeste_json(caminho_csv: str, ano: int):
+    logger.info(f"Lendo CSV: {caminho_csv}")
 
-    resultado = []
-    chunksize = 50000
+    colunas = {
+        "CO_ENTIDADE": "co_entidade",
+        "NO_ENTIDADE": "no_entidade",
+        "SG_UF": "sg_uf",
+        "NO_MUNICIPIO": "no_municipio",
+        "CO_MUNICIPIO": "co_municipio",
+        "QT_MAT_BAS": "qt_mat_bas",
+        "QT_MAT_PROF": "qt_mat_prof",
+        "QT_MAT_EJA": "qt_mat_eja",
+        "QT_MAT_ESP": "qt_mat_esp",
+        "QT_MAT_FUND": "qt_mat_fund",
+        "QT_MAT_INF": "qt_mat_inf",
+        "QT_MAT_MED": "qt_mat_med",
+        "QT_MAT_ZR_NA": "qt_mat_zr_na",
+        "QT_MAT_ZR_RUR": "qt_mat_zr_rur",
+        "QT_MAT_ZR_URB": "qt_mat_zr_urb",
+        "QT_MAT_TOTAL": "qt_mat_total",
+    }
+
+    # 🔹 lê somente o cabeçalho
+    colunas_csv = pd.read_csv(
+        caminho_csv,
+        sep=";",
+        encoding="latin1",
+        nrows=0
+    ).columns
+
+    # 🔹 mantém apenas colunas que realmente existem
+    colunas_validas = {
+        k: v for k, v in colunas.items() if k in colunas_csv
+    }
+
+    logger.info(f"Colunas válidas usadas: {list(colunas_validas.keys())}")
+
+    dados_processados = []
 
     for chunk in pd.read_csv(
         caminho_csv,
-        sep=';',
-        encoding='latin1',
-        chunksize=chunksize
+        sep=";",
+        encoding="latin1",
+        usecols=colunas_validas.keys(),
+        low_memory=False,
+        chunksize=50000
     ):
-        
-        nordeste = chunk[chunk['SG_UF'].isin(ESTADOS_NORDESTE)]
-        
-        dados = nordeste[[
-            'CO_ENTIDADE',
-            'NO_ENTIDADE',
-            'SG_UF',
-            'CO_MUNICIPIO',
-            'QT_MAT_BAS',
-            'QT_MAT_PROF',
-            'QT_MAT_EJA',
-            'QT_MAT_ESP'
-        ]]
+        chunk = chunk.rename(columns=colunas_validas)
+        chunk["nu_ano_censo"] = ano
 
-        # AJUSTE IMPORTANTE: tratar NaN
-        dados = dados.fillna(0)
+        colunas_numericas = [
+            c for c in chunk.columns
+            if c.startswith("qt_") or c in ["co_entidade", "co_municipio"]
+        ]
 
-        
-        json_chunk = dados.rename(columns={
-            'CO_ENTIDADE': 'codigo',
-            'NO_ENTIDADE': 'nome',
-            'SG_UF': 'co_uf',
-            'CO_MUNICIPIO': 'co_municipio',
-            'QT_MAT_BAS': 'qt_mat_bas',
-            'QT_MAT_PROF': 'qt_mat_prof',
-            'QT_MAT_EJA': 'qt_mat_eja',
-            'QT_MAT_ESP': 'qt_mat_esp'
-        }).to_dict(orient='records')
+        chunk[colunas_numericas] = chunk[colunas_numericas].fillna(0)
+        chunk = chunk[chunk["sg_uf"].notna()]
 
-        resultado.extend(json_chunk)
+        dados_processados.extend(chunk.to_dict(orient="records"))
 
-       
-        if limite and len(resultado) >= limite:
-            return resultado[:limite]
+    logger.info(f"Total de registros lidos ({ano}): {len(dados_processados)}")
+    return dados_processados
 
-    return resultado
-
-
-if __name__ == "__main__":
-    caminho_csv = "microdados_ed_basica_2024.csv"
-
-    dados = ler_csv_nordeste_json(caminho_csv, limite=5)
-
-    print(dados)
