@@ -43,30 +43,41 @@ def inserir_instituicoes_lote(dados):
             co_entidade, no_entidade, sg_uf, co_uf,
             no_municipio, co_municipio, nu_ano_censo,
             qt_mat_bas, qt_mat_prof, qt_mat_eja, qt_mat_esp,
-            qt_mat_fund, qt_mat_inf, qt_mat_med
+            qt_mat_fund, qt_mat_inf, qt_mat_med,
+            qt_mat_zr_na, qt_mat_zr_rur, qt_mat_zr_urb,
+            qt_mat_total
         )
         VALUES (
             %(co_entidade)s, %(no_entidade)s, %(sg_uf)s, %(co_uf)s,
             %(no_municipio)s, %(co_municipio)s, %(nu_ano_censo)s,
             %(qt_mat_bas)s, %(qt_mat_prof)s, %(qt_mat_eja)s, %(qt_mat_esp)s,
-            %(qt_mat_fund)s, %(qt_mat_inf)s, %(qt_mat_med)s
+            %(qt_mat_fund)s, %(qt_mat_inf)s, %(qt_mat_med)s,
+            %(qt_mat_zr_na)s, %(qt_mat_zr_rur)s, %(qt_mat_zr_urb)s,
+            %(qt_mat_total)s
         )
         ON CONFLICT (co_entidade, nu_ano_censo)
-        DO UPDATE SET qt_mat_total = EXCLUDED.qt_mat_total;
+        DO UPDATE SET
+            qt_mat_bas   = EXCLUDED.qt_mat_bas,
+            qt_mat_prof = EXCLUDED.qt_mat_prof,
+            qt_mat_eja  = EXCLUDED.qt_mat_eja,
+            qt_mat_esp  = EXCLUDED.qt_mat_esp,
+            qt_mat_fund = EXCLUDED.qt_mat_fund,
+            qt_mat_inf  = EXCLUDED.qt_mat_inf,
+            qt_mat_med  = EXCLUDED.qt_mat_med,
+            qt_mat_zr_na  = EXCLUDED.qt_mat_zr_na,
+            qt_mat_zr_rur = EXCLUDED.qt_mat_zr_rur,
+            qt_mat_zr_urb = EXCLUDED.qt_mat_zr_urb,
+            qt_mat_total  = EXCLUDED.qt_mat_total;
     """
 
     dados_ajustados = []
 
     for d in dados:
         sg_uf = d.get("sg_uf")
-
-        # ignora registro inválido
         if not sg_uf:
             continue
 
         d["co_uf"] = UF_MAP.get(sg_uf)
-
-        # segurança extra
         if not d["co_uf"]:
             continue
 
