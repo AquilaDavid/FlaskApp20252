@@ -9,6 +9,7 @@ def ler_csv_nordeste_json(caminho_csv: str, ano: int):
         "CO_ENTIDADE": "co_entidade",
         "NO_ENTIDADE": "no_entidade",
         "SG_UF": "sg_uf",
+        "CO_UF": "co_uf",
         "NO_MUNICIPIO": "no_municipio",
         "CO_MUNICIPIO": "co_municipio",
         "QT_MAT_BAS": "qt_mat_bas",
@@ -21,10 +22,8 @@ def ler_csv_nordeste_json(caminho_csv: str, ano: int):
         "QT_MAT_ZR_NA": "qt_mat_zr_na",
         "QT_MAT_ZR_RUR": "qt_mat_zr_rur",
         "QT_MAT_ZR_URB": "qt_mat_zr_urb",
-        "QT_MAT_TOTAL": "qt_mat_total",
     }
 
-    # 🔹 lê somente o cabeçalho
     colunas_csv = pd.read_csv(
         caminho_csv,
         sep=";",
@@ -32,7 +31,6 @@ def ler_csv_nordeste_json(caminho_csv: str, ano: int):
         nrows=0
     ).columns
 
-    # 🔹 mantém apenas colunas que realmente existem
     colunas_validas = {
         k: v for k, v in colunas.items() if k in colunas_csv
     }
@@ -54,14 +52,35 @@ def ler_csv_nordeste_json(caminho_csv: str, ano: int):
 
         colunas_numericas = [
             c for c in chunk.columns
-            if c.startswith("qt_") or c in ["co_entidade", "co_municipio"]
+            if c.startswith("qt_") or c in ["co_entidade", "co_municipio", "co_uf"]
         ]
 
         chunk[colunas_numericas] = chunk[colunas_numericas].fillna(0)
         chunk = chunk[chunk["sg_uf"].notna()]
 
+        # 🔧 GARANTE TODAS AS COLUNAS qt_*
+        colunas_qt = [
+            "qt_mat_bas", "qt_mat_prof", "qt_mat_eja", "qt_mat_esp",
+            "qt_mat_fund", "qt_mat_inf", "qt_mat_med",
+            "qt_mat_zr_na", "qt_mat_zr_rur", "qt_mat_zr_urb"
+        ]
+
+        for col in colunas_qt:
+            if col not in chunk.columns:
+                chunk[col] = 0
+
+        # 🔥 total correto
+        chunk["qt_mat_total"] = (
+            chunk["qt_mat_bas"]
+            + chunk["qt_mat_prof"]
+            + chunk["qt_mat_eja"]
+            + chunk["qt_mat_esp"]
+            + chunk["qt_mat_fund"]
+            + chunk["qt_mat_inf"]
+            + chunk["qt_mat_med"]
+        )
+
         dados_processados.extend(chunk.to_dict(orient="records"))
 
     logger.info(f"Total de registros lidos ({ano}): {len(dados_processados)}")
     return dados_processados
-
