@@ -2,3 +2,6 @@ venv
 *.pyc
 **/*.pyc
 *.csv
+*.log.1
+*.log.3
+.env
