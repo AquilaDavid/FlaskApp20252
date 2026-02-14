@@ -1,8 +1,18 @@
 from flask import Flask, request, jsonify
+from marshmallow import ValidationError
 from helpers.database.postgres_helper import get_connection
 from helpers.logger import logger
 
+from helpers.database.pagination_schema import PaginationSchema
+from helpers.database.ranking_schema import RankingSchema
+
 app = Flask(__name__)
+
+
+
+@app.errorhandler(ValidationError)
+def handle_validation_error(err):
+    return jsonify({"errors": err.messages}), 400
 
 
 @app.get("/")
@@ -11,13 +21,14 @@ def index():
     return {"versao": "2.0.0", "banco": "PostgreSQL"}, 200
 
 
-# USUÁRIOS
-
 
 @app.get("/usuarios")
 def get_usuarios():
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
+    schema = PaginationSchema()
+    params = schema.load(request.args)
+
+    page = params["page"]
+    limit = params["limit"]
     offset = (page - 1) * limit
 
     logger.info(f"Listando usuários | page={page}, limit={limit}")
@@ -54,13 +65,16 @@ def get_usuarios():
     }), 200
 
 
-# INSTITUIÇÕES DE ENSINO
-
-
+# =========================
+# INSTITUIÇÕES
+# =========================
 @app.get("/instituicoesensino")
 def get_instituicoes():
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
+    schema = PaginationSchema()
+    params = schema.load(request.args)
+
+    page = params["page"]
+    limit = params["limit"]
     offset = (page - 1) * limit
 
     logger.info(f"Listando instituições | page={page}, limit={limit}")
@@ -105,16 +119,15 @@ def get_instituicoes():
     }), 200
 
 
-# RANKING DE MATRÍCULAS
-
-
+# =========================
+# RANKING
+# =========================
 @app.get("/instituicoesensino/ranking/<int:ano>")
 def ranking_instituicoes(ano):
-    if ano not in (2022, 2023, 2024):
-        logger.warning(f"Ano inválido informado: {ano}")
-        return {"erro": "Ano inválido. Utilize 2022, 2023 ou 2024."}, 400
+    schema = RankingSchema()
+    schema.load({"ano": ano})
 
-    logger.info(f"Gerando ranking de instituições | ano={ano}")
+    logger.info(f"Gerando ranking | ano={ano}")
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -172,7 +185,7 @@ def ranking_instituicoes(ano):
             "nu_ranking": idx
         })
 
-    logger.info(f"Ranking gerado com {len(ranking)} instituições | ano={ano}")
+    logger.info(f"Ranking gerado com {len(ranking)} instituições")
 
     return jsonify(ranking), 200
 
