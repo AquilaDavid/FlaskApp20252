@@ -2,3 +2,11 @@ venv
 *.pyc
 **/*.pyc
 *.csv
+*.log
+*.env
+.gitignore
+.log.1
+.log.3
+.log.2
+app.log.1
+app.log.3
