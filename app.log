@@ -7,3 +7,6 @@
 2025-12-23 19:57:05,934 - INFO - Endpoint raiz acessado
 2025-12-23 19:57:06,101 - INFO - Endpoint raiz acessado
 2025-12-23 19:57:06,474 - INFO - Endpoint raiz acessado
+2026-02-14 13:58:58,499 - INFO - Listando instituições | page=1, limit=10
+2026-02-14 13:59:12,783 - INFO - Gerando ranking | ano=2022
+2026-02-14 13:59:13,210 - INFO - Ranking gerado com 10 registros
