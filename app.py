@@ -9,7 +9,6 @@ from helpers.database.ranking_schema import RankingSchema
 app = Flask(__name__)
 
 
-
 @app.errorhandler(ValidationError)
 def handle_validation_error(err):
     return jsonify({"errors": err.messages}), 400
@@ -21,20 +20,19 @@ def index():
     return {"versao": "2.0.0", "banco": "PostgreSQL"}, 200
 
 
-
 @app.get("/usuarios")
 def get_usuarios():
-    schema = PaginationSchema()
-    params = schema.load(request.args)
+    esquema = PaginationSchema()
+    parametros = esquema.load(request.args)
 
-    page = params["page"]
-    limit = params["limit"]
-    offset = (page - 1) * limit
+    pagina = parametros["page"]
+    limite = parametros["limit"]
+    deslocamento = (pagina - 1) * limite
 
-    logger.info(f"Listando usuários | page={page}, limit={limit}")
+    logger.info(f"Listando usuários | page={pagina}, limit={limite}")
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conexao = get_connection()
+    cursor = conexao.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM usuarios")
     total = cursor.fetchone()[0]
@@ -43,44 +41,41 @@ def get_usuarios():
         SELECT id, nome, cpf, nascimento
         FROM usuarios
         LIMIT %s OFFSET %s
-    """, (limit, offset))
+    """, (limite, deslocamento))
 
     usuarios = [
         {
-            "id": row[0],
-            "nome": row[1],
-            "cpf": row[2],
-            "nascimento": row[3]
+            "id": linha[0],
+            "nome": linha[1],
+            "cpf": linha[2],
+            "nascimento": linha[3]
         }
-        for row in cursor.fetchall()
+        for linha in cursor.fetchall()
     ]
 
-    conn.close()
+    conexao.close()
 
     return jsonify({
-        "page": page,
-        "limit": limit,
+        "page": pagina,
+        "limit": limite,
         "total": total,
         "data": usuarios
     }), 200
 
 
-# =========================
-# INSTITUIÇÕES
-# =========================
 @app.get("/instituicoesensino")
 def get_instituicoes():
-    schema = PaginationSchema()
-    params = schema.load(request.args)
+    esquema = PaginationSchema()
+    parametros = esquema.load(request.args)
 
-    page = params["page"]
-    limit = params["limit"]
-    offset = (page - 1) * limit
+    pagina = parametros["page"]
+    limite = parametros["limit"]
+    deslocamento = (pagina - 1) * limite
 
-    logger.info(f"Listando instituições | page={page}, limit={limit}")
+    logger.info(f"Listando instituições | page={pagina}, limit={limite}")
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conexao = get_connection()
+    cursor = conexao.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM instituicoes_ensino")
     total = cursor.fetchone()[0]
@@ -95,42 +90,39 @@ def get_instituicoes():
             qt_mat_total
         FROM instituicoes_ensino
         LIMIT %s OFFSET %s
-    """, (limit, offset))
+    """, (limite, deslocamento))
 
     instituicoes = [
         {
-            "co_entidade": row[0],
-            "no_entidade": row[1],
-            "sg_uf": row[2],
-            "no_municipio": row[3],
-            "nu_ano_censo": row[4],
-            "qt_mat_total": row[5]
+            "co_entidade": linha[0],
+            "no_entidade": linha[1],
+            "sg_uf": linha[2],
+            "no_municipio": linha[3],
+            "nu_ano_censo": linha[4],
+            "qt_mat_total": linha[5]
         }
-        for row in cursor.fetchall()
+        for linha in cursor.fetchall()
     ]
 
-    conn.close()
+    conexao.close()
 
     return jsonify({
-        "page": page,
-        "limit": limit,
+        "page": pagina,
+        "limit": limite,
         "total": total,
         "data": instituicoes
     }), 200
 
 
-# =========================
-# RANKING
-# =========================
 @app.get("/instituicoesensino/ranking/<int:ano>")
 def ranking_instituicoes(ano):
-    schema = RankingSchema()
-    schema.load({"ano": ano})
+    esquema = RankingSchema()
+    esquema.load({"ano": ano})
 
     logger.info(f"Gerando ranking | ano={ano}")
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conexao = get_connection()
+    cursor = conexao.cursor()
 
     cursor.execute("""
         SELECT
@@ -158,31 +150,31 @@ def ranking_instituicoes(ano):
         LIMIT 10
     """, (ano,))
 
-    rows = cursor.fetchall()
-    conn.close()
+    registros = cursor.fetchall()
+    conexao.close()
 
     ranking = []
-    for idx, row in enumerate(rows, start=1):
+    for indice, linha in enumerate(registros, start=1):
         ranking.append({
-            "no_entidade": row[0],
-            "co_entidade": row[1],
-            "sg_uf": row[2],
-            "co_uf": row[3],
-            "no_municipio": row[4],
-            "co_municipio": row[5],
-            "nu_ano_censo": row[6],
-            "qt_mat_bas": row[7],
-            "qt_mat_prof": row[8],
-            "qt_mat_eja": row[9],
-            "qt_mat_esp": row[10],
-            "qt_mat_fund": row[11],
-            "qt_mat_inf": row[12],
-            "qt_mat_med": row[13],
-            "qt_mat_zr_na": row[14],
-            "qt_mat_zr_rur": row[15],
-            "qt_mat_zr_urb": row[16],
-            "qt_mat_total": row[17],
-            "nu_ranking": idx
+            "no_entidade": linha[0],
+            "co_entidade": linha[1],
+            "sg_uf": linha[2],
+            "co_uf": linha[3],
+            "no_municipio": linha[4],
+            "co_municipio": linha[5],
+            "nu_ano_censo": linha[6],
+            "qt_mat_bas": linha[7],
+            "qt_mat_prof": linha[8],
+            "qt_mat_eja": linha[9],
+            "qt_mat_esp": linha[10],
+            "qt_mat_fund": linha[11],
+            "qt_mat_inf": linha[12],
+            "qt_mat_med": linha[13],
+            "qt_mat_zr_na": linha[14],
+            "qt_mat_zr_rur": linha[15],
+            "qt_mat_zr_urb": linha[16],
+            "qt_mat_total": linha[17],
+            "nu_ranking": indice
         })
 
     logger.info(f"Ranking gerado com {len(ranking)} instituições")
